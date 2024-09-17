@@ -8,7 +8,7 @@ def get_page_content(url, headers, parameters):
   soup = BeautifulSoup(response, 'html.parser')
   return soup
 
-def parse_athletes(soup):
+def parse_athletes(soup, kimono, category, gender, belt, division):
   table = soup.find('table')
   if not table:
     return None
@@ -25,7 +25,8 @@ def parse_athletes(soup):
 
     name = name_tag.get_text(strip=True)
     details = DOMAIN + name_tag['href']
-    photo =photo_cell.find('img')['src']
+
+    photo = photo_cell.find('img')['src'] if photo_cell and photo_cell.find('img') else 'Sem foto Disponível'
     points = points_cell.get_text(strip=True)
     rank =  rank_cell.get_text(strip=True)
 
@@ -34,14 +35,23 @@ def parse_athletes(soup):
         'name': name,
         'details': details,
         'points': points,
-        'rank': rank
+        'rank': rank,
+        'kimono': kimono,
+        'category': category,
+        'gender': gender,
+        'belt': belt,
+        'division': division
     }
     athletes.append(athlete)
   return athletes
 
+def list_filters(soup, filter_id):
+  filters = soup.find(id=filter_id).find_all('option')
+  return [item['value'] for item in filters[1:]]
+
 DOMAIN = 'https://ibjjf.com'
 URL = f'{DOMAIN}//2024-athletes-ranking'
-HEADER = {'USER-AGENT':'Mozilla/5.0'}
+HEADER = {'Uer-Agent':'Mozilla/5.0'}
 PARAMETERS = {
     'utf8':'✓',
     'filters[s]':'ranking-geral-gi',
@@ -49,21 +59,37 @@ PARAMETERS = {
     'filters[gender]':'male',
     'filters[belt]':'black',
     'filters[weight]': None,
-    'page': 2
+    'page': 1
 }
 
-page = 140
-all_athletes = []
-while True:
-  PARAMETERS['page']= page
+soup_filters = get_page_content(URL,HEADER,PARAMETERS)
 
-  soup_athletes = get_page_content(URL,HEADER,PARAMETERS)
-  athletes= parse_athletes(soup_athletes)
-  if athletes is None :
-    break
-  print(page)
-  all_athletes.extend(athletes)
-  page +=1
+kimono = list_filters(soup_filters, 'filters_s')
+category = list_filters(soup_filters, 'filters_ranking_category')
+gender = list_filters(soup_filters, 'filters_gender')
+belt = list_filters(soup_filters, 'filters_belt')
+division = list_filters(soup_filters, 'weight_filter')
+
+all_athletes = []
+
+for k, c, g,b,d in product(kimono, category, gender, belt, division):
+  page = 1  
+  while True:
+  #while page <= 2:
+    print(f'Scraping: {k}, {c}, {g}, {b}, {d} for page {page}')
+    PARAMETERS['filters[s]'] = k
+    PARAMETERS['filters[ranking_category]'] = c
+    PARAMETERS['filters[gender]'] = g
+    PARAMETERS['filters[belt]'] = b
+    PARAMETERS['filters[weight]'] = d
+    PARAMETERS['page']= page
+    soup_athletes = get_page_content(URL,HEADER,PARAMETERS)
+    athletes= parse_athletes(soup_athletes, k,c,g,b,d)
+    if athletes is None :
+      break
+    all_athletes.extend(athletes)
+    page +=1
+
 
 df_athletes = pd.json_normalize(all_athletes)
 
