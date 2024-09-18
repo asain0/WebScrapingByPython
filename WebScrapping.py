@@ -75,7 +75,6 @@ all_athletes = []
 for k, c, g,b,d in product(kimono, category, gender, belt, division):
   page = 1  
   while True:
-  #while page <= 2:
     print(f'Scraping: {k}, {c}, {g}, {b}, {d} for page {page}')
     PARAMETERS['filters[s]'] = k
     PARAMETERS['filters[ranking_category]'] = c
@@ -93,7 +92,7 @@ for k, c, g,b,d in product(kimono, category, gender, belt, division):
 
 df_athletes = pd.json_normalize(all_athletes)
 
-excel_file = 'C:\\asain\\EstudosDev\\Python\\webscraping\\athletes.xlsx'
+excel_file = 'C:\\athletes.xlsx'
 
 arquivo = open(excel_file,"w")
 arquivo.write("Arquivo Criado")
